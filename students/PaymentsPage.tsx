@@ -18,6 +18,7 @@ const PaymentsPage: React.FC = () => {
     const [allocations, setAllocations] = useState<PaymentAllocation[]>([]);
     const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
     const [lastPayment, setLastPayment] = useState<any>(null);
+    const [isProcessing, setIsProcessing] = useState(false);
 
     const studentsInClass = useMemo(() => {
         if (!selectedClass) return [];
@@ -97,7 +98,7 @@ const PaymentsPage: React.FC = () => {
     
     const totalAllocated = allocations.reduce((sum, a) => sum + a.amount, 0);
 
-    const handleSubmitPayment = () => {
+    const handleSubmitPayment = async () => {
         if (!selectedStudent || !user) {
             alert("Please select a student.");
             return;
@@ -111,6 +112,7 @@ const PaymentsPage: React.FC = () => {
             return;
         }
         
+        setIsProcessing(true);
         const finalAllocations = allocations.filter(a => a.amount > 0);
         const receiptNo = `R${Date.now()}`;
         const newPayment = {
@@ -123,7 +125,7 @@ const PaymentsPage: React.FC = () => {
             recorded_by: {id: user.id, name: user.name }
         };
 
-        makePayment(selectedStudent.admission_number, newPayment);
+        await makePayment(selectedStudent.admission_number, newPayment);
 
         setLastPayment({
             student: selectedStudent,
@@ -132,6 +134,7 @@ const PaymentsPage: React.FC = () => {
         setIsReceiptModalOpen(true);
         setSelectedStudent(null);
         setSelectedClass('');
+        setIsProcessing(false);
     };
 
     const currencyFormatter = new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' });
@@ -219,8 +222,8 @@ const PaymentsPage: React.FC = () => {
                                 </div>
                                 <div className="flex gap-2">
                                     <button onClick={handleAutoApply} className="py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 dark:bg-gray-600 dark:text-gray-200 dark:hover:bg-gray-500">Auto-Apply</button>
-                                    <button onClick={handleSubmitPayment} disabled={totalAllocated !== paymentAmount || paymentAmount <= 0} className="py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-300 disabled:cursor-not-allowed">
-                                        Confirm & Generate Receipt
+                                    <button onClick={handleSubmitPayment} disabled={totalAllocated !== paymentAmount || paymentAmount <= 0 || isProcessing} className="py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-300 disabled:cursor-not-allowed">
+                                        {isProcessing ? 'Processing...' : 'Confirm & Generate Receipt'}
                                     </button>
                                 </div>
                             </div>

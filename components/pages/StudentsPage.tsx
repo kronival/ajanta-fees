@@ -16,6 +16,8 @@ const StudentsPage: React.FC = () => {
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [showConfirmDelete, setShowConfirmDelete] = useState<Student | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const handleOpenModal = (student: Student | null = null) => {
     setEditingStudent(student);
@@ -27,18 +29,22 @@ const StudentsPage: React.FC = () => {
     setIsModalOpen(false);
   };
 
-  const handleSaveStudent = (student: Student) => {
+  const handleSaveStudent = async (student: Student) => {
+    setIsSaving(true);
     if (editingStudent) {
-      updateStudent(student);
+      await updateStudent(student);
     } else {
-      addStudent(student);
+      await addStudent(student);
     }
+    setIsSaving(false);
     handleCloseModal();
   };
 
-  const handleDelete = (student: Student) => {
+  const handleDelete = async (student: Student) => {
       if (student) {
-        deleteStudent(student.admission_number);
+        setIsDeleting(true);
+        await deleteStudent(student.admission_number);
+        setIsDeleting(false);
         setShowConfirmDelete(null);
       }
   }
@@ -124,6 +130,7 @@ const StudentsPage: React.FC = () => {
           onClose={handleCloseModal}
           existingAdmissionNumbers={students.map(s => s.admission_number)}
           classFees={classFees}
+          isSaving={isSaving}
         />
       </Modal>
 
@@ -137,8 +144,8 @@ const StudentsPage: React.FC = () => {
             <button onClick={() => setShowConfirmDelete(null)} className="py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 dark:bg-gray-600 dark:text-gray-200 dark:hover:bg-gray-500">
                 Cancel
             </button>
-            <button onClick={() => handleDelete(showConfirmDelete)} className="py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700">
-                Delete
+            <button onClick={() => handleDelete(showConfirmDelete)} disabled={isDeleting} className="py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 disabled:bg-red-400 disabled:cursor-not-allowed">
+                {isDeleting ? 'Deleting...' : 'Delete'}
             </button>
           </div>
         </Modal>

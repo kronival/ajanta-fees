@@ -1,3 +1,4 @@
+
 import React, { useState, useContext, useEffect } from 'react';
 import { AuthProvider, AuthContext } from './context/AuthContext';
 import { DataProvider, DataContext } from './context/DataContext';
@@ -16,9 +17,10 @@ interface UserFormProps {
   onSave: (user: User | Omit<User, 'id'>) => void;
   onClose: () => void;
   existingUsernames: string[];
+  isSaving: boolean;
 }
 
-const UserForm: React.FC<UserFormProps> = ({ user, onSave, onClose, existingUsernames }) => {
+const UserForm: React.FC<UserFormProps> = ({ user, onSave, onClose, existingUsernames, isSaving }) => {
   const [formData, setFormData] = useState({
     name: '',
     username: '',
@@ -104,7 +106,9 @@ const UserForm: React.FC<UserFormProps> = ({ user, onSave, onClose, existingUser
       {error && <p className="text-sm text-red-500">{error}</p>}
       <div className="flex justify-end gap-4 pt-4">
         <button type="button" onClick={onClose} className="py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 dark:bg-gray-600 dark:text-gray-200 dark:hover:bg-gray-500">Cancel</button>
-        <button type="submit" className="py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700">Save Changes</button>
+        <button type="submit" disabled={isSaving} className="py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 disabled:cursor-not-allowed">
+          {isSaving ? 'Saving...' : 'Save Changes'}
+        </button>
       </div>
     </form>
   );
@@ -118,9 +122,12 @@ const SettingsPage: React.FC = () => {
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [deletingUser, setDeletingUser] = useState<User | null>(null);
+  const [isSavingUser, setIsSavingUser] = useState(false);
+  const [isDeletingUser, setIsDeletingUser] = useState(false);
 
   const [editingFeeClass, setEditingFeeClass] = useState<string | null>(null);
   const [feeEdits, setFeeEdits] = useState<{ [className: string]: string }>({});
+  const [isSavingFee, setIsSavingFee] = useState<string | null>(null);
   const currencyFormatter = new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', minimumFractionDigits: 0 });
 
 
@@ -134,12 +141,14 @@ const SettingsPage: React.FC = () => {
     setIsUserModalOpen(true);
   };
 
-  const handleSaveUser = (userData: User | Omit<User, 'id'>) => {
+  const handleSaveUser = async (userData: User | Omit<User, 'id'>) => {
+    setIsSavingUser(true);
     if ('id' in userData) {
-        updateUser(userData);
+        await updateUser(userData);
     } else {
-        addUser(userData as Omit<User, 'id'>);
+        await addUser(userData as Omit<User, 'id'>);
     }
+    setIsSavingUser(false);
     handleCloseUserModal();
   };
 
@@ -148,9 +157,11 @@ const SettingsPage: React.FC = () => {
     setEditingUser(null);
   };
 
-  const handleDeleteUser = () => {
+  const handleDeleteUser = async () => {
     if(deletingUser) {
-        deleteUser(deletingUser.id);
+        setIsDeletingUser(true);
+        await deleteUser(deletingUser.id);
+        setIsDeletingUser(false);
         setDeletingUser(null);
     }
   }
@@ -160,10 +171,12 @@ const SettingsPage: React.FC = () => {
     setFeeEdits(prev => ({ ...prev, [className]: String(currentAmount) }));
   }
 
-  const handleSaveFee = (className: string) => {
+  const handleSaveFee = async (className: string) => {
     const newAmount = parseFloat(feeEdits[className]);
     if(!isNaN(newAmount) && newAmount >= 0) {
-        updateClassSessionFee(className, ACADEMIC_YEAR, newAmount);
+        setIsSavingFee(className);
+        await updateClassSessionFee(className, ACADEMIC_YEAR, newAmount);
+        setIsSavingFee(null);
     }
     setEditingFeeClass(null);
   }
@@ -230,6 +243,7 @@ const SettingsPage: React.FC = () => {
                         {classFees.map(cf => {
                             const currentFee = cf.fee_structure[ACADEMIC_YEAR] || 0;
                             const isEditing = editingFeeClass === cf.class_name;
+                            const isSavingThisFee = isSavingFee === cf.class_name;
                             return (
                                 <tr key={cf.class_name}>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">{cf.class_name}</td>
@@ -248,7 +262,9 @@ const SettingsPage: React.FC = () => {
                                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                         {isEditing ? (
                                             <div className="flex gap-2 justify-end">
-                                                <button onClick={() => handleSaveFee(cf.class_name)} className="text-white bg-green-600 hover:bg-green-700 text-xs py-1 px-2 rounded">Save</button>
+                                                <button onClick={() => handleSaveFee(cf.class_name)} disabled={isSavingThisFee} className="text-white bg-green-600 hover:bg-green-700 text-xs py-1 px-2 rounded disabled:bg-green-400 disabled:cursor-not-allowed">
+                                                    {isSavingThisFee ? 'Saving...' : 'Save'}
+                                                </button>
                                                 <button onClick={handleCancelEditFee} className="text-gray-700 bg-gray-200 hover:bg-gray-300 text-xs py-1 px-2 rounded dark:bg-gray-600 dark:text-gray-200 dark:hover:bg-gray-500">Cancel</button>
                                             </div>
                                         ) : (
@@ -271,6 +287,7 @@ const SettingsPage: React.FC = () => {
             onSave={handleSaveUser}
             onClose={handleCloseUserModal}
             existingUsernames={users.map(u => u.username)}
+            isSaving={isSavingUser}
           />
         </Modal>
 
@@ -284,8 +301,8 @@ const SettingsPage: React.FC = () => {
                     <button onClick={() => setDeletingUser(null)} className="py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 dark:bg-gray-600 dark:text-gray-200 dark:hover:bg-gray-500">
                         Cancel
                     </button>
-                    <button onClick={handleDeleteUser} className="py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700">
-                        Delete User
+                    <button onClick={handleDeleteUser} disabled={isDeletingUser} className="py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 disabled:bg-red-400 disabled:cursor-not-allowed">
+                        {isDeletingUser ? 'Deleting...' : 'Delete User'}
                     </button>
                 </div>
             </Modal>
