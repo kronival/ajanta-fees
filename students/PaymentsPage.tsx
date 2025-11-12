@@ -194,10 +194,10 @@ const PaymentsPage: React.FC = () => {
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Payment Mode</label>
-                                    <select value={paymentMode} onChange={e => setPaymentMode(e.target.value as any)} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                                    <select value={paymentMode} onChange={e => setPaymentMode(e.target.value as 'Cash' | 'Cheque' | 'UPI' | 'Card')} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                                        <option>Cash</option>
                                         <option>UPI</option>
                                         <option>Card</option>
-                                        <option>Cash</option>
                                         <option>Cheque</option>
                                     </select>
                                 </div>

@@ -94,11 +94,10 @@ const ReportsPage: React.FC = () => {
 
   const requestSort = (key: SortKey) => {
     let direction: 'ascending' | 'descending' = 'ascending';
-    if (sortConfig.key === key && sortConfig.direction === 'ascending') {
-      direction = 'descending';
-    } else if (sortConfig.key !== key && key === 'date') {
-      // Default to descending for date on first click
-      direction = 'descending';
+    if (sortConfig.key === key) {
+      direction = sortConfig.direction === 'ascending' ? 'descending' : 'ascending';
+    } else {
+      direction = key === 'date' ? 'descending' : 'ascending';
     }
     setSortConfig({ key, direction });
   };
