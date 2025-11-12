@@ -14,7 +14,7 @@ const PaymentsPage: React.FC = () => {
     const [selectedClass, setSelectedClass] = useState<string>('');
     const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
     const [paymentAmount, setPaymentAmount] = useState<number>(0);
-    const [paymentMode, setPaymentMode] = useState<'Cash' | 'Cheque' | 'UPI' | 'Card'>('UPI');
+    const [paymentMode, setPaymentMode] = useState<'Cash' | 'Cheque' | 'UPI' | 'Card'>('Cash');
     const [allocations, setAllocations] = useState<PaymentAllocation[]>([]);
     const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
     const [lastPayment, setLastPayment] = useState<any>(null);
