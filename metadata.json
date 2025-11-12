@@ -1,0 +1,5 @@
+{
+  "name": "Fees Management System",
+  "description": "A comprehensive web application to manage student fees, track payments, generate receipts, and view reports. It supports role-based access for Admins, Accountants, Teachers, and Parents.",
+  "requestFramePermissions": []
+}
