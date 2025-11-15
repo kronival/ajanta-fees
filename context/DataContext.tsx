@@ -15,6 +15,8 @@ interface DataContextType {
   updateUser: (user: User) => Promise<void>;
   addUser: (user: Omit<User, 'id'>) => Promise<void>;
   deleteUser: (userId: string) => Promise<void>;
+  isConnected: boolean;
+  refreshData: () => Promise<void>;
 }
 
 export const DataContext = createContext<DataContextType>({} as DataContextType);
@@ -25,6 +27,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [students, setStudents] = useState<Student[]>([]);
   const [classFees, setClassFees] = useState<ClassFeeConfig[]>([]);
   const [users, setUsers] = useState<User[]>([]);
+  const [isConnected, setIsConnected] = useState(false);
 
   const fetchData = async () => {
     try {
@@ -36,12 +39,15 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       if (usersRes.ok) setUsers(await usersRes.json());
       if (feesRes.ok) setClassFees(await feesRes.json());
       if (studentsRes.ok) setStudents(await studentsRes.json());
+      
+      setIsConnected(true);
     } catch (error) {
       console.warn("Failed to fetch data from backend. Backend might be down. Using local fallback data.", error);
       // Fallback to local constants if backend fails
       setUsers(USERS);
       setClassFees(INITIAL_CLASS_FEES);
       setStudents(INITIAL_STUDENTS);
+      setIsConnected(false);
     }
   };
 
@@ -177,7 +183,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   return (
-    <DataContext.Provider value={{ students, classFees, users, addStudent, updateStudent, deleteStudent, makePayment, updateClassSessionFee, updateUser, addUser, deleteUser }}>
+    <DataContext.Provider value={{ students, classFees, users, addStudent, updateStudent, deleteStudent, makePayment, updateClassSessionFee, updateUser, addUser, deleteUser, isConnected, refreshData: fetchData }}>
       {children}
     </DataContext.Provider>
   );
