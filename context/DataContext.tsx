@@ -1,7 +1,7 @@
 
-import React, { createContext, useState, ReactNode } from 'react';
+import React, { createContext, useState, ReactNode, useEffect } from 'react';
 import { Student, Payment, ClassFeeConfig, User } from '../types';
-import { INITIAL_STUDENTS, INITIAL_CLASS_FEES, USERS, ACADEMIC_YEAR } from '../constants';
+import { ACADEMIC_YEAR, USERS, INITIAL_CLASS_FEES, INITIAL_STUDENTS } from '../constants';
 
 interface DataContextType {
   students: Student[];
@@ -19,102 +19,165 @@ interface DataContextType {
 
 export const DataContext = createContext<DataContextType>({} as DataContextType);
 
-const simulateApiCall = (callback: () => void, delay = 500): Promise<void> => {
-    return new Promise((resolve) => {
-        setTimeout(() => {
-            callback();
-            resolve();
-        }, delay);
-    });
-};
+const API_URL = 'http://localhost:3001/api';
 
 export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [students, setStudents] = useState<Student[]>(INITIAL_STUDENTS);
-  const [classFees, setClassFees] = useState<ClassFeeConfig[]>(INITIAL_CLASS_FEES);
-  const [users, setUsers] = useState<User[]>(USERS);
+  const [students, setStudents] = useState<Student[]>([]);
+  const [classFees, setClassFees] = useState<ClassFeeConfig[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
+
+  const fetchData = async () => {
+    try {
+      const usersRes = await fetch(`${API_URL}/users`);
+      if (!usersRes.ok) throw new Error("Backend unreachable");
+      const feesRes = await fetch(`${API_URL}/class-fees`);
+      const studentsRes = await fetch(`${API_URL}/students`);
+
+      if (usersRes.ok) setUsers(await usersRes.json());
+      if (feesRes.ok) setClassFees(await feesRes.json());
+      if (studentsRes.ok) setStudents(await studentsRes.json());
+    } catch (error) {
+      console.warn("Failed to fetch data from backend. Backend might be down. Using local fallback data.", error);
+      // Fallback to local constants if backend fails
+      setUsers(USERS);
+      setClassFees(INITIAL_CLASS_FEES);
+      setStudents(INITIAL_STUDENTS);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, []);
 
   const addStudent = async (student: Student) => {
-    await simulateApiCall(() => {
-      setStudents(prev => [...prev, student]);
-    });
+    try {
+        const res = await fetch(`${API_URL}/students`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(student)
+        });
+        if (!res.ok) throw new Error('Failed to add student');
+        await fetchData();
+    } catch (e) {
+        console.error(e);
+        alert("Error: Could not connect to backend. Student was not saved.");
+    }
   };
 
   const updateStudent = async (updatedStudent: Student) => {
-    await simulateApiCall(() => {
-      setStudents(prev => prev.map(s => s.admission_number === updatedStudent.admission_number ? updatedStudent : s));
-    });
+    try {
+        const res = await fetch(`${API_URL}/students/${updatedStudent.admission_number}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(updatedStudent)
+        });
+        if (!res.ok) throw new Error('Failed to update student');
+        await fetchData();
+    } catch (e) {
+        console.error(e);
+        alert("Error: Could not connect to backend. Changes were not saved.");
+    }
   };
   
   const deleteStudent = async (admissionNumber: string) => {
-    await simulateApiCall(() => {
-      setStudents(prev => prev.filter(s => s.admission_number !== admissionNumber));
-    });
+    try {
+        const res = await fetch(`${API_URL}/students/${admissionNumber}`, {
+            method: 'DELETE'
+        });
+        if (!res.ok) throw new Error('Failed to delete student');
+        await fetchData();
+    } catch (e) {
+        console.error(e);
+        alert("Error: Could not connect to backend.");
+    }
   }
 
   const updateUser = async (updatedUser: User) => {
-     await simulateApiCall(() => {
-        setUsers(prevUsers => prevUsers.map(u => u.id === updatedUser.id ? updatedUser : u));
-    });
+    try {
+        const res = await fetch(`${API_URL}/users/${updatedUser.id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(updatedUser)
+        });
+        if (!res.ok) throw new Error('Failed to update user');
+        await fetchData();
+    } catch (e) {
+        console.error(e);
+        alert("Error: Could not connect to backend.");
+    }
   };
 
   const addUser = async (user: Omit<User, 'id'>) => {
-     await simulateApiCall(() => {
-        const newUser = { ...user, id: `user-${Date.now()}-${Math.random().toString(36).substr(2, 9)}` };
-        setUsers(prev => [...prev, newUser]);
-    });
+    try {
+         const newUser = { ...user, id: `user-${Date.now()}-${Math.random().toString(36).substr(2, 9)}` };
+         const res = await fetch(`${API_URL}/users`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(newUser)
+        });
+        if (!res.ok) throw new Error('Failed to add user');
+        await fetchData();
+    } catch (e) {
+        console.error(e);
+        alert("Error: Could not connect to backend.");
+    }
   };
   
   const deleteUser = async (userId: string) => {
-    await simulateApiCall(() => {
-        setUsers(prev => prev.filter(u => u.id !== userId));
-    });
+    try {
+        const res = await fetch(`${API_URL}/users/${userId}`, {
+            method: 'DELETE'
+        });
+        if (!res.ok) throw new Error('Failed to delete user');
+        await fetchData();
+    } catch (e) {
+        console.error(e);
+        alert("Error: Could not connect to backend.");
+    }
   };
 
   const makePayment = async (admissionNumber: string, payment: Payment) => {
-    await simulateApiCall(() => {
-      setStudents(prev => prev.map(student => {
-        if (student.admission_number === admissionNumber) {
-          const updatedStudent = { ...student, payments: [...student.payments, payment] };
-          
-          // Deduct from pending fees
-          const newPending = [...updatedStudent.previous_pending];
-          payment.applied_to.forEach(alloc => {
-              const pendingIndex = newPending.findIndex(p => p.year === alloc.year);
-              if (pendingIndex !== -1) {
-                  newPending[pendingIndex].amount -= alloc.amount;
-              }
-          });
-          
-          updatedStudent.previous_pending = newPending.filter(p => p.amount > 0.01); // Remove if fully paid, handle float inaccuracies
-          return updatedStudent;
-        }
-        return student;
-      }));
-    });
+    try {
+        const res = await fetch(`${API_URL}/payments`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ admissionNumber, payment })
+        });
+        if (!res.ok) throw new Error('Failed to record payment');
+        await fetchData(); 
+    } catch (e) {
+        console.error(e);
+        alert("Error: Could not connect to backend. Payment was not recorded.");
+    }
   };
 
   const updateClassSessionFee = async (className: string, session: string, newAmount: number) => {
-    await simulateApiCall(() => {
-      setClassFees(prev => prev.map(cf => 
-          cf.class_name === className 
-          ? { ...cf, fee_structure: { ...cf.fee_structure, [session]: newAmount } } 
-          : cf
-      ));
+    try {
+        // Find the current config to update
+        const currentConfig = classFees.find(cf => cf.class_name === className);
+        if (!currentConfig) return;
 
-      if (session === ACADEMIC_YEAR) {
-          setStudents(prevStudents => prevStudents.map(student => {
-              const inClassAndSession = student.sessions.some(s => s.session === session && s.class === className);
-              if (inClassAndSession) {
-                  return { ...student, current_year_fees: newAmount };
-              }
-              return student;
-          }));
-      }
-    });
+        const updatedFeeStructure = { ...currentConfig.fee_structure, [session]: newAmount };
+
+        const res = await fetch(`${API_URL}/class-fees/${className}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                fee_structure: updatedFeeStructure,
+                session, 
+                newAmount 
+            })
+        });
+        if (!res.ok) throw new Error('Failed to update fees');
+        await fetchData();
+    } catch (e) {
+        console.error(e);
+        alert("Error: Could not connect to backend.");
+    }
   };
 
   return (
-    <DataContext.Provider value={{ students, classFees, users, addStudent, updateStudent, deleteStudent, makePayment, updateClassSessionFee: updateClassSessionFee, updateUser, addUser, deleteUser }}>
+    <DataContext.Provider value={{ students, classFees, users, addStudent, updateStudent, deleteStudent, makePayment, updateClassSessionFee, updateUser, addUser, deleteUser }}>
       {children}
     </DataContext.Provider>
   );
