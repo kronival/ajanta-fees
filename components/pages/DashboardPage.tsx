@@ -2,7 +2,7 @@ import React, { useMemo, useContext } from 'react';
 import { DataContext } from '../../context/DataContext';
 import { AuthContext } from '../../context/AuthContext';
 import { Student, Payment } from '../../types';
-import { ACADEMIC_YEAR } from '../../constants';
+import { ACADEMIC_YEAR, ALL_CLASSES } from '../../constants';
 
 const StatCard: React.FC<{ title: string; value: string | number; icon: React.ReactNode; color: string }> = ({ title, value, icon, color }) => (
     <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg flex items-center justify-between">
@@ -29,6 +29,10 @@ const DashboardPage: React.FC = () => {
         const allPayments: (Payment & { studentName: string; admissionNumber: string; })[] = [];
         const todayString = new Date().toISOString().split('T')[0];
 
+        // Initialize class counts
+        const classCounts: { [key: string]: number } = {};
+        ALL_CLASSES.forEach(c => classCounts[c] = 0);
+
         const calculateOutstanding = (student: Student) => {
             const totalPreviousPending = student.previous_pending.reduce((sum, p) => sum + p.amount, 0);
             const paidCurrentYear = student.payments
@@ -54,6 +58,14 @@ const DashboardPage: React.FC = () => {
                     totalCollectedToday += p.amount;
                 }
             });
+
+            // Calculate Class Counts based on current session
+            const currentSession = student.sessions.find(s => s.session === ACADEMIC_YEAR);
+            if (currentSession && currentSession.class) {
+                if (classCounts[currentSession.class] !== undefined) {
+                    classCounts[currentSession.class]++;
+                }
+            }
         });
         
         studentsWithDues = uniqueStudentsWithDues.size;
@@ -67,7 +79,8 @@ const DashboardPage: React.FC = () => {
             totalOutstanding,
             studentsWithDues,
             totalCollectedToday,
-            recentPayments
+            recentPayments,
+            classCounts
         };
 
     }, [students]);
@@ -104,6 +117,21 @@ const DashboardPage: React.FC = () => {
                 />
             </div>
             
+            {/* Student Count Per Class Section */}
+            <div className="mt-8">
+                <h2 className="text-lg font-semibold text-gray-800 dark:text-white mb-4">Class Strength</h2>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                    {ALL_CLASSES.map(className => (
+                        <div key={className} className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow flex flex-col items-center justify-center hover:shadow-md transition-shadow">
+                             <span className="text-sm font-medium text-gray-500 dark:text-gray-400">Class {className}</span>
+                             <span className="text-2xl font-bold text-indigo-600 dark:text-indigo-400 mt-1">
+                                {dashboardData.classCounts[className] || 0}
+                             </span>
+                        </div>
+                    ))}
+                </div>
+            </div>
+
             <div className="mt-8 bg-white dark:bg-gray-800 shadow-md rounded-lg overflow-x-auto">
                 <h2 className="p-6 text-lg font-semibold text-gray-800 dark:text-white border-b dark:border-gray-700">Recent Payments</h2>
                 <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
